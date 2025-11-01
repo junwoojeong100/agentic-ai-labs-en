@@ -1,0 +1,43 @@
+# Azure Core Packages
+azure-identity>=1.17.0
+azure-core>=1.30.0
+
+# Azure AI Services
+azure-ai-projects>=1.0.0b5
+azure-ai-evaluation>=1.0.0
+azure-ai-inference>=1.0.0b6
+azure-search-documents>=11.4.0
+
+# OpenAI
+openai>=1.51.0
+
+# Web Framework
+fastapi>=0.110.0
+uvicorn>=0.30.0
+
+# HTTP Client
+httpx>=0.27.0
+requests>=2.31.0
+
+# Utilities
+python-dotenv>=1.0.0
+
+# Azure Monitor & OpenTelemetry
+azure-monitor-opentelemetry>=1.6.0
+azure-monitor-opentelemetry-exporter>=1.0.0b27
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
+opentelemetry-instrumentation-fastapi>=0.45b0
+
+# Agent Framework & MCP
+agent-framework>=1.0.0b251016
+agent-framework-devui>=1.0.0b251007  # Dev UI for workflow visualization (Lab 6)
+mcp>=1.1.0
+
+# Microsoft Agent Framework (Official - MAF)
+# Using latest beta version of agent-framework
+# Release: v1.0.0-beta (October 2025)
+
+# Jupyter Support
+ipykernel>=6.29.0
+jupyter>=1.0.0

@@ -1,0 +1,22 @@
+[
+  {
+    "query": "Hello. I would like to get travel destination recommendations.",
+    "ground-truth": "Agent should respond to greeting and call Research Agent for travel recommendations."
+  },
+  {
+    "query": "Please tell me the current weather in Busan. Include temperature and feels-like temperature.",
+    "ground-truth": "Must provide accurate current weather information for Busan, including both temperature and feels-like temperature."
+  },
+  {
+    "query": "What are some travel destinations in Jeju Island that I can enjoy with my family?",
+    "ground-truth": "Should search and recommend family-friendly destinations in Jeju Island. Provide information considering natural attractions, experiential activities, accessibility, etc."
+  },
+  {
+    "query": "Please recommend beaches where I can surf.",
+    "ground-truth": "Should search and recommend beaches in Korea where surfing is possible. Provide information about surfing spots like Yangyang, Busan, etc."
+  },
+  {
+    "query": "What are good autumn foliage spots to visit in fall?",
+    "ground-truth": "Should search and recommend good autumn foliage spots to visit in fall. Provide information about natural attractions like Naejangsan, Seoraksan, etc."
+  }
+]

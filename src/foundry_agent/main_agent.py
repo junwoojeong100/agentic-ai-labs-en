@@ -1,0 +1,181 @@
+"""
+Main Agent - Coordinates between specialized agents
+"""
+
+import logging
+import os
+from typing import Optional
+
+from azure.ai.projects import AIProjectClient
+
+logger = logging.getLogger(__name__)
+
+
+class MainAgent:
+    """
+    Main agent that coordinates task delegation between specialized agents.
+    Uses Connected Agents to delegate to Tool Agent and Research Agent.
+    """
+    
+    def __init__(self, project_client: AIProjectClient, connected_tools: list = None):
+        """
+        Initialize the Main Agent.
+        
+        Args:
+            project_client: AIProjectClient instance
+            connected_tools: List of ConnectedAgentTool instances (Tool Agent, Research Agent)
+        """
+        self.project_client = project_client
+        self.agent_id: Optional[str] = None
+        self.connected_tools = connected_tools or []
+        
+        # Get model deployment name from environment variable (default: gpt-4o)
+        self.model = os.getenv("AZURE_AI_MODEL_DEPLOYMENT_NAME", "gpt-4o")
+        
+        instructions = """You are the main agent that coordinates between specialized agents.
+
+Your responsibilities:
+1. Analyze user requests and determine which specialized agent to use
+2. Delegate tasks to the appropriate connected agent:
+   - Use 'tool_agent' for: Weather info via MCP (get_weather)
+   - Use 'research_agent' for: Travel destination recommendations via RAG (Jeju/Busan/Gangwon/attractions/landmarks)
+3. You can use multiple agents if the question requires both tools and research (e.g., weather + travel destinations)
+4. Synthesize responses from connected agents into a clear, comprehensive answer
+
+ROUTING GUIDELINES:
+1. Weather queries → tool_agent
+2. Travel/tourism questions (travel/tourism/recommendations/attractions) → research_agent
+3. Both weather + travel info → Use both agents
+4. Greetings/casual → Answer directly with friendly tone
+
+EXAMPLES:
+- Seoul weather + recommend attractions → Use both agents
+- What's the weather in Busan? → tool_agent
+- Recommend Jeju travel attractions → research_agent
+- Hello → Answer: Hello! How can I help you? 😊
+- Thanks for your help! → Answer: You're welcome! Feel free to ask if you need more help. 😊
+
+Always choose the right agent(s) based on the user's question and provide well-structured responses."""
+        
+        self.name = "Main Agent"
+        self.instructions = instructions
+    
+    def create(self) -> str:
+        """Create the agent in Azure AI Foundry with Connected Agents."""
+        logger.info(f"Creating {self.name}")
+        
+        # Collect tool definitions from connected agents
+        tools_definitions = []
+        for connected_tool in self.connected_tools:
+            tools_definitions.extend(connected_tool.definitions)
+        
+        # Create agent with connected tools
+        if tools_definitions:
+            agent = self.project_client.agents.create_agent(
+                model=self.model,
+                name=self.name,
+                instructions=self.instructions,
+                tools=tools_definitions
+            )
+            logger.info(f"Created {self.name} with {len(self.connected_tools)} connected agents")
+        else:
+            agent = self.project_client.agents.create_agent(
+                model=self.model,
+                name=self.name,
+                instructions=self.instructions
+            )
+            logger.info(f"Created {self.name} (no connected agents)")
+        
+        self.agent_id = agent.id
+        return self.agent_id
+    
+    def delete(self):
+        """Delete the agent."""
+        if self.agent_id:
+            self.project_client.agents.delete_agent(self.agent_id)
+            self.agent_id = None
+    
+    def get_id(self) -> Optional[str]:
+        """Get the agent ID."""
+        return self.agent_id
+
+    async def run(self, message: str, thread_id: Optional[str] = None) -> str:
+        """
+        Run the main orchestrator agent with a message.
+        
+        Args:
+            message: User message
+            thread_id: Optional thread ID for conversation continuity
+            
+        Returns:
+            Agent response
+        """
+        thread = None
+        try:
+            # ========================================================================
+            # 🔍 OpenTelemetry Span for Agent Execution Tracing
+            # ========================================================================
+            from opentelemetry import trace
+            tracer = trace.get_tracer(__name__)
+            
+            with tracer.start_as_current_span("main_agent_run") as span:
+                # Gen AI semantic conventions for Azure AI Foundry Tracing
+                span.set_attribute("gen_ai.system", "azure_ai_agent")
+                span.set_attribute("gen_ai.request.model", self.model)
+                span.set_attribute("gen_ai.prompt", message)
+                span.set_attribute("agent.id", self.agent_id)
+                span.set_attribute("agent.name", self.name)
+                
+                # Create thread
+                thread = self.project_client.agents.threads.create()
+                span.set_attribute("thread.id", thread.id)
+                
+                # Add message to thread
+                self.project_client.agents.messages.create(
+                    thread_id=thread.id,
+                    role="user",
+                    content=message
+                )
+                
+                # Run the agent
+                run = self.project_client.agents.runs.create_and_process(
+                    thread_id=thread.id,
+                    agent_id=self.agent_id
+                )
+                span.set_attribute("run.id", run.id)
+                span.set_attribute("run.status", run.status)
+                
+                # Get the response
+                messages = self.project_client.agents.messages.list(thread_id=thread.id)
+            
+                messages_list = list(messages)
+                span.set_attribute("messages.count", len(messages_list))
+                
+                # Messages are returned in reverse chronological order (newest first)
+                for msg in messages_list:
+                    if msg.role == "assistant":
+                        if hasattr(msg, 'content') and msg.content:
+                            for content_part in msg.content:
+                                if hasattr(content_part, 'text'):
+                                    response_text = content_part.text.value
+                                    
+                                    # Log output to span for Tracing UI (Gen AI conventions)
+                                    span.set_attribute("gen_ai.completion", response_text)
+                                    span.set_attribute("gen_ai.response.finish_reason", "stop")
+                                    span.set_attribute("gen_ai.usage.output_tokens", len(response_text.split()))
+                                    
+                                    return response_text
+                
+                logger.warning("No assistant response found")
+                return "No response generated"
+            
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            raise
+        finally:
+            # Clean up thread
+            if thread:
+                try:
+                    self.project_client.agents.threads.delete(thread.id)
+                except Exception as cleanup_error:
+                    logger.warning(f"Thread cleanup failed: {cleanup_error}")
