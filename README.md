@@ -2,7 +2,7 @@
 
 A hands-on project for building Multi-Agent systems using Azure AI Foundry Agent Service.
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/junwoojeong100/agentic-ai-labs?quickstart=1)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/junwoojeong100/agentic-ai-labs-en?quickstart=1)
 
 ---
 
@@ -82,7 +82,7 @@ After completing this lab, you will be able to **implement and operate** the fol
 
 ### 1️⃣ Start GitHub Codespace
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/junwoojeong100/agentic-ai-labs?quickstart=1)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/junwoojeong100/agentic-ai-labs-en?quickstart=1)
 
 **Method:**
 - Click the button above, or
